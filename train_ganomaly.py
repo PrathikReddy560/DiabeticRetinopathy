@@ -9,6 +9,10 @@ GANomaly v2 Training Script — Full rewrite with all improvements.
 """
 
 import os, sys, time, json
+
+# Ensure the project root is in the Python path so we can import 'data' and 'models'
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
