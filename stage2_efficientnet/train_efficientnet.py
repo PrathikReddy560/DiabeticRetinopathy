@@ -28,6 +28,8 @@ import json
 import time
 from datetime import timedelta
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import numpy as np
 import torch
 import torch.nn as nn
