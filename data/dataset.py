@@ -47,11 +47,27 @@ def _build_image_map(directory):
                     img_map[basename] = os.path.join(root, f)
     return img_map
 
+def _find_file_recursively(base_dir, filename):
+    """Recursively find a file by exact name in a directory."""
+    if not os.path.exists(base_dir):
+        return None
+    for root, _, files in os.walk(base_dir):
+        if filename in files:
+            return os.path.join(root, filename)
+    return None
+
 
 def _load_idrid(csv_path, img_dir):
     """Load IDRiD dataset: returns (paths, grades) for existing images."""
     if not os.path.exists(csv_path):
-        return [], []
+        # Fallback: search for the CSV file recursively in the parent directory (IDRID_DIR)
+        parent_dir = os.path.dirname(os.path.dirname(csv_path))
+        filename = os.path.basename(csv_path)
+        found = _find_file_recursively(parent_dir, filename)
+        if found:
+            csv_path = found
+        else:
+            return [], []
 
     df = pd.read_csv(csv_path)
     # Clean column names (IDRiD CSV has trailing spaces)
@@ -80,6 +96,14 @@ def prepare_datasets(images_dir, labels_csv, image_size=64,
     Test: Full APTOS + IDRiD (all grades).
     """
     # ── Source 1: APTOS ──
+    if not os.path.exists(labels_csv):
+        # Fallback: search for the CSV recursively in APTOS_DIR (the parent)
+        parent_dir = os.path.dirname(labels_csv)
+        filename = os.path.basename(labels_csv)
+        found = _find_file_recursively(parent_dir, filename)
+        if found:
+            labels_csv = found
+            
     df = pd.read_csv(labels_csv)
     
     aptos_img_map = _build_image_map(images_dir)
