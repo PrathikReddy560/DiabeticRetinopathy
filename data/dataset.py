@@ -36,6 +36,18 @@ class RetinalDataset(Dataset):
         return image, label, grade
 
 
+def _build_image_map(directory):
+    """Recursively find all images in a directory and map basename -> full_path."""
+    img_map = {}
+    if os.path.exists(directory):
+        for root, _, files in os.walk(directory):
+            for f in files:
+                basename, ext = os.path.splitext(f)
+                if ext.lower() in {'.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp'}:
+                    img_map[basename] = os.path.join(root, f)
+    return img_map
+
+
 def _load_idrid(csv_path, img_dir):
     """Load IDRiD dataset: returns (paths, grades) for existing images."""
     if not os.path.exists(csv_path):
@@ -44,14 +56,16 @@ def _load_idrid(csv_path, img_dir):
     df = pd.read_csv(csv_path)
     # Clean column names (IDRiD CSV has trailing spaces)
     df.columns = [c.strip() for c in df.columns]
+    
+    idrid_img_map = _build_image_map(img_dir)
 
     paths, grades = [], []
     for _, row in df.iterrows():
         name = str(row['Image name']).strip()
         grade = int(row['Retinopathy grade'])
-        # IDRiD images are .jpg
-        img_path = os.path.join(img_dir, f"{name}.jpg")
-        if os.path.exists(img_path):
+        
+        img_path = idrid_img_map.get(name)
+        if img_path:
             paths.append(img_path)
             grades.append(grade)
 
@@ -64,31 +78,34 @@ def prepare_datasets(images_dir, labels_csv, image_size=64,
     """
     Train/val: APTOS Grade 0 + ODIR Normal + IDRiD Grade 0 COMBINED.
     Test: Full APTOS + IDRiD (all grades).
-
-    idrid_config: dict with keys 'train_csv', 'train_img', 'test_csv', 'test_img'
     """
     # ── Source 1: APTOS ──
     df = pd.read_csv(labels_csv)
-    df['image_path'] = df['id_code'].apply(lambda x: os.path.join(images_dir, f"{x}.png"))
-    df = df[df['image_path'].apply(os.path.exists)].reset_index(drop=True)
+    
+    aptos_img_map = _build_image_map(images_dir)
+    df['image_path'] = df['id_code'].astype(str).apply(lambda x: aptos_img_map.get(x, ""))
+    df = df[df['image_path'] != ""].reset_index(drop=True)
 
     print(f"[APTOS]  {len(df)} images found. Grade distribution:")
     print(df['diagnosis'].value_counts().sort_index().to_string())
 
     # APTOS Grade 0 for training
-    aptos_healthy = df[df['diagnosis'] == 0].sample(frac=1, random_state=42).reset_index(drop=True)
-    aptos_paths = aptos_healthy['image_path'].tolist()
-    aptos_labels = [0] * len(aptos_paths)
+    aptos_paths, aptos_labels = [], []
+    if len(df) > 0 and 0 in df['diagnosis'].values:
+        aptos_healthy = df[df['diagnosis'] == 0].sample(frac=1, random_state=42).reset_index(drop=True)
+        aptos_paths = aptos_healthy['image_path'].tolist()
+        aptos_labels = [0] * len(aptos_paths)
     print(f"         → {len(aptos_paths)} healthy (Grade 0)")
 
     # ── Source 2: ODIR Normal folder ──
     odir_paths, odir_labels = [], []
     if normal_folder and os.path.isdir(normal_folder):
-        valid_ext = {'.png', '.jpg', '.jpeg', '.bmp', '.tif'}
-        odir_paths = [os.path.join(normal_folder, f) for f in os.listdir(normal_folder)
-                      if os.path.splitext(f)[1].lower() in valid_ext]
+        odir_img_map = _build_image_map(normal_folder)
+        odir_paths = list(odir_img_map.values())
         odir_labels = [0] * len(odir_paths)
         print(f"[ODIR]   {len(odir_paths)} normal images")
+    else:
+        print(f"[ODIR]   0 normal images")
 
     # ── Source 3: IDRiD ──
     idrid_healthy_paths, idrid_healthy_labels = [], []
@@ -99,12 +116,9 @@ def prepare_datasets(images_dir, labels_csv, image_size=64,
         tr_paths, tr_grades = _load_idrid(idrid_config['train_csv'], idrid_config['train_img'])
         idrid_healthy_paths = [p for p, g in zip(tr_paths, tr_grades) if g == 0]
         idrid_healthy_labels = [0] * len(idrid_healthy_paths)
-        idrid_dr_train = [(p, g) for p, g in zip(tr_paths, tr_grades) if g > 0]
 
         # Testing set
         te_paths, te_grades = _load_idrid(idrid_config['test_csv'], idrid_config['test_img'])
-        idrid_healthy_test = [p for p, g in zip(te_paths, te_grades) if g == 0]
-        idrid_healthy_labels_test = [0] * len(idrid_healthy_test)
 
         # All IDRiD images go to test set
         idrid_test_paths = tr_paths + te_paths
@@ -112,6 +126,8 @@ def prepare_datasets(images_dir, labels_csv, image_size=64,
 
         print(f"[IDRiD]  {len(tr_paths)} train + {len(te_paths)} test images found")
         print(f"         → {len(idrid_healthy_paths)} healthy (Grade 0) for training")
+    else:
+        print("[IDRiD]  0 train + 0 test images found")
 
     # ── Combine ALL healthy images for training ──
     all_healthy_paths = aptos_paths + odir_paths + idrid_healthy_paths
