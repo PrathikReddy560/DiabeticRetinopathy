@@ -241,7 +241,7 @@ def train_one_epoch(model, loader, criterion, optimizer, scaler, device,
         # --- Mixup augmentation ---
         apply_mixup = use_mixup and np.random.random() < MIXUP_PROB
 
-        with torch.amp.autocast('cuda', enabled=(device.type == 'cuda')):
+        with torch.cuda.amp.autocast(enabled=(device.type == 'cuda')):
             if apply_mixup:
                 mixed_images, y_a, y_b, lam = mixup_data(
                     images, labels, alpha=MIXUP_ALPHA
@@ -286,7 +286,7 @@ def validate(model, loader, criterion, device):
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
 
-        with torch.amp.autocast('cuda', enabled=(device.type == 'cuda')):
+        with torch.cuda.amp.autocast(enabled=(device.type == 'cuda')):
             logits = model(images)
             loss = criterion(logits, labels)
 

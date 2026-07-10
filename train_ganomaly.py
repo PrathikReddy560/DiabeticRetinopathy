@@ -121,7 +121,7 @@ def train():
             # penalty requires second-order gradients incompatible with AMP.
             opt_D.zero_grad()
 
-            with autocast('cuda'):
+            with autocast():
                 pred_real, feat_real_d = D(images)
                 x_hat_d, _, _ = G(images)
                 pred_fake_d, _ = D(x_hat_d.detach())
@@ -142,7 +142,7 @@ def train():
             # ──────────────── Train Generator ────────────────
             opt_G.zero_grad()
 
-            with autocast('cuda'):
+            with autocast():
                 x_hat, z, z_hat = G(images)
                 pred_fake, feat_fake = D(x_hat)
                 _, feat_real = D(images)
