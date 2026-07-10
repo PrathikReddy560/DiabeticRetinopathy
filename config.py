@@ -8,14 +8,16 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 IS_KAGGLE = os.environ.get('KAGGLE_KERNEL_RUN_TYPE') is not None
 
 if IS_KAGGLE:
-    # On Kaggle, datasets are mounted in /kaggle/input
-    DATASET_DIR = "/kaggle/input"
-    IMAGES_DIR   = os.path.join(DATASET_DIR, "aptos2019-blindness-detection", "train_images")
-    LABELS_CSV   = os.path.join(DATASET_DIR, "aptos2019-blindness-detection", "train.csv")
-    NORMAL_DIR   = os.path.join(DATASET_DIR, "odir-dr-dataset", "normal") # Ensure you upload normal dir to this dataset
+    # On Kaggle, datasets are nested under different usernames based on how they were attached
+    APTOS_DIR = "/kaggle/input/datasets/paraspatil/aptos2019blindnessdetection"
+    IMAGES_DIR = os.path.join(APTOS_DIR, "train_images")
+    LABELS_CSV = os.path.join(APTOS_DIR, "train.csv")
+    
+    # Assuming ODIR is under your username like IDRiD
+    NORMAL_DIR = "/kaggle/input/datasets/lakshmiprathik/odir-dr-dataset/normal" 
     
     # IDRiD dataset
-    IDRID_DIR       = os.path.join(DATASET_DIR, "idrid-dr-dataset", "B. Disease Grading")
+    IDRID_DIR       = "/kaggle/input/datasets/lakshmiprathik/idrid-dr-dataset/B. Disease Grading"
     IDRID_TRAIN_IMG = os.path.join(IDRID_DIR, "1. Original Images", "a. Training Set")
     IDRID_TEST_IMG  = os.path.join(IDRID_DIR, "1. Original Images", "b. Testing Set")
     IDRID_TRAIN_CSV = os.path.join(IDRID_DIR, "2. Groundtruths", "a. IDRiD_Disease Grading_Training Labels.csv")
