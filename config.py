@@ -10,7 +10,7 @@ IS_KAGGLE = os.environ.get('KAGGLE_KERNEL_RUN_TYPE') is not None
 if IS_KAGGLE:
     # On Kaggle, datasets are nested under different usernames based on how they were attached
     # Using the official APTOS dataset because the 'paraspatil' one does not contain images
-    APTOS_DIR = "/kaggle/input/datasets/lakshmiprathik/mariaherrerot/aptos2019"
+    APTOS_DIR = "/kaggle/input/datasets/mariaherrerot/aptos2019"
     IMAGES_DIR = os.path.join(APTOS_DIR, "train_images")
     LABELS_CSV = os.path.join(APTOS_DIR, "train_1.csv")
     
